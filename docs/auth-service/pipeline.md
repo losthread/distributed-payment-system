@@ -1,0 +1,76 @@
+# Auth Service Pipeline
+
+## Authentication Flow
+
+Client
+  |
+  | Send credentials / OAuth token
+  |
+  v
+Auth Service
+  |
+  | Validate request
+  |
+  | Authenticate user
+  |
+  | Create or retrieve user identity
+  |
+  | Generate JWT token
+  |
+  v
+Client receives access token
+
+## Authorized Request Flow
+
+Client
+  |
+  | Request + JWT Token
+  |
+  v
+Microservice
+  |
+  | Validate JWT
+  |
+  | Extract user_id
+  |
+  v
+Process request
+
+## User Management Flow
+
+Client
+  |
+  | Profile request
+  |
+  v
+Auth Service
+  |
+  | Verify identity
+  |
+  | Read/update user data
+  |
+  v
+Return user information
+
+## External Authentication Flow
+
+Client
+  |
+  | Google OAuth Login
+  |
+  v
+Google
+  |
+  | Return identity token
+  |
+  v
+Auth Service
+  |
+  | Verify token
+  |
+  | Create/login user
+  |
+  | Issue JWT
+  |
+  v
+Client
