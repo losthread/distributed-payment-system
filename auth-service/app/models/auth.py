@@ -7,7 +7,7 @@ class UserRegister(BaseModel):
   password: Annotated[str, Field(min_length=1)]
 
 class UserLogin(BaseModel):
-  email: Annotated[EmailStr, Field()] | None = None
+  login_identifier: Annotated[str, Field(min_length=1)]
   password: Annotated[str, Field(min_length=1)]
 
 class GoogleLoginRequest(BaseModel):

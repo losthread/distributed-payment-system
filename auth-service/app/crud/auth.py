@@ -1,5 +1,6 @@
 from ..core.config import conn
 from ..core.auth import  hash_password, verify_password, create_jwt_token, verify_google_token
+from ..core.kafka import publish_user_created_event
 from psycopg.errors import UniqueViolation, NotNullViolation, CheckViolation, StringDataRightTruncation, InvalidTextRepresentation, OperationalError
 from google.auth.exceptions import GoogleAuthError, TransportError
 from fastapi import HTTPException, status
@@ -23,6 +24,9 @@ def register(username: str | None, email: EmailStr, password: str) -> dict:
     # fetch, commit, close
     row: tuple = cursor.fetchone()
     conn.commit()
+
+    # publish event to kafka message queue
+    publish_user_created_event(str(row[0]))
 
     return {"user_id": row[0]}
 
@@ -59,6 +63,9 @@ def login(login_identifier: str, password: str):
     )
     row: tuple = cursor.fetchone()
 
+    print("LOGIN:", repr(login_identifier))
+    print("ROW:", row)
+
     if row is None:
       conn.rollback()
       cursor.close()
@@ -68,10 +75,9 @@ def login(login_identifier: str, password: str):
     stored_password_hash: str = row[1]
 
     if not verify_password(password, stored_password_hash):
-      cursor.close()
       raise HTTPException(status_code = 401, detail = "Email or password is incorrect")
     
-    # create token
+    # create token 
     token = create_jwt_token(user_id)
 
     return {
