@@ -2,6 +2,13 @@ from ..models.internal_wallet import WalletInternalResponse
 from ..core.config import conn
 from fastapi import HTTPException, status
 from uuid import UUID
+from psycopg.errors import (
+  OperationalError,
+  DatabaseError,
+  DataError,
+  InvalidTextRepresentation,
+  NumericValueOutOfRange,
+)
 from decimal import Decimal
 
 def get_internal_wallet(user_id: UUID) -> WalletInternalResponse:
@@ -26,6 +33,14 @@ def get_internal_wallet(user_id: UUID) -> WalletInternalResponse:
       balance=row[1],
       currency=row[2]
     )
+
+  except OperationalError:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable")
+
+  except DatabaseError:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
   finally:
     cursor.close()
@@ -56,6 +71,22 @@ def wallet_debit_money(user_id: UUID, amount: Decimal) -> WalletInternalResponse
       balance=row[1],
       currency=row[2]
     )
+
+  except (DataError, InvalidTextRepresentation):
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid wallet data")
+
+  except NumericValueOutOfRange:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount is too large")
+
+  except OperationalError:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable")
+
+  except DatabaseError:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
   finally:
     cursor.close()
@@ -88,6 +119,22 @@ def wallet_credit_money(user_id: UUID, amount: Decimal) -> WalletInternalRespons
       balance=row[1],
       currency=row[2]
     )
+
+  except (DataError, InvalidTextRepresentation):
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid wallet data")
+
+  except NumericValueOutOfRange:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Amount is too large")
+
+  except OperationalError:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable")
+
+  except DatabaseError:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
   finally:
     cursor.close()
