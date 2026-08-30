@@ -1,0 +1,128 @@
+# Transaction Service Pipeline
+
+## Transaction Creation Flow
+
+Client
+|
+| Send transaction request + JWT
+|
+v
+Transaction Service
+|
+| Validate JWT
+|
+| Extract sender_id
+|
+| Create pending transaction
+|
+v
+Wallet Service
+|
+| Debit sender
+|
+v
+Wallet Service
+|
+| Credit receiver
+|
+v
+Transaction Service
+|
+| Mark transaction as completed
+|
+v
+Client receives transaction details
+
+
+## Failed Debit Flow
+
+Transaction Service
+|
+| Debit sender
+|
+v
+Wallet Service
+|
+| Debit fails
+|
+v
+Transaction Service
+|
+| Mark transaction as failed
+|
+v
+Client receives error
+
+
+## Credit Failure / Refund Flow
+
+Transaction Service
+|
+| Debit sender succeeds
+|
+v
+Wallet Service
+|
+| Credit receiver fails
+|
+v
+Transaction Service
+|
+| Attempt refund to sender
+|
+v
+Wallet Service
+|
+| Refund succeeds
+|
+v
+Transaction Service
+|
+| Mark transaction as failed
+|
+v
+Client receives payment failure
+
+
+## Refund Failure Flow
+
+Transaction Service
+|
+| Refund attempt fails
+|
+v
+Kafka
+|
+| Publish refund event
+|
+v
+Refund Worker
+|
+| Retry refund
+|
+v
+Wallet Service
+|
+| Credit sender
+|
+v
+Transaction marked as refunded
+
+
+## Transaction Retrieval Flow
+
+Client
+|
+| Request + JWT
+|
+v
+Transaction Service
+|
+| Validate JWT
+|
+| Extract user_id
+|
+| Query transactions involving user
+|
+v
+Return transaction information

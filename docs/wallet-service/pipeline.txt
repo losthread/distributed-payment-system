@@ -1,0 +1,153 @@
+# Wallet Service Pipeline
+
+## Wallet Creation Flow
+
+User Service
+|
+| user.created event
+|
+v
+Kafka
+|
+| Consume user.created event
+|
+v
+Wallet Service
+|
+| Create wallet for user
+|
+| Initialize balance to 0.00
+|
+v
+Wallet created in database
+
+## Wallet Query Flow
+
+Client
+|
+| GET /wallets + JWT
+|
+v
+Wallet Service
+|
+| Validate JWT
+|
+| Extract user_id
+|
+| Query wallet by user_id
+|
+v
+Return wallet details
+
+## Deposit Flow
+
+Client
+|
+| POST /wallets/deposit + JWT + amount
+|
+v
+Wallet Service
+|
+| Validate JWT
+|
+| Extract user_id
+| 
+| Credit wallet (internal endpoint)
+|
+v
+Wallet Service
+|
+| Update balance
+|
+| Return new balance
+|
+v
+Client receives updated balance
+
+## Withdrawal Flow
+
+Client
+|
+| POST /wallets/withdraw + JWT + amount
+|
+v
+Wallet Service
+|
+| Validate JWT
+|
+| Extract user_id
+|
+| Debit wallet (internal endpoint)
+|
+v
+Wallet Service
+|
+| Check sufficient balance
+|
+| Update balance
+|
+| Return new balance
+|
+v
+Client receives updated balance
+
+## Internal Debit Flow (from Transaction Service)
+
+Transaction Service
+|
+| POST /internal/wallets/{user_id}/debit + internal token
+|
+v
+Wallet Service
+|
+| Verify internal token
+|
+| Check sufficient balance
+|
+| Debit amount from wallet
+|
+| Update balance
+|
+v
+Return updated wallet info
+
+## Internal Credit Flow (from Transaction Service)
+
+Transaction Service
+|
+| POST /internal/wallets/{user_id}/credit + internal token
+|
+v
+Wallet Service
+|
+| Verify internal token
+|
+| Credit amount to wallet
+|
+| Update balance
+|
+v
+Return updated wallet info
+
+## Refund Processing Flow
+
+Kafka
+|
+| refund.requested event
+|
+v
+Wallet Service Consumer
+|
+| Credit sender wallet
+|
+v
+Kafka
+|
+| refund.completed event (on success)
+| OR
+| refund.failed event (on failure)
+|
+v
+Transaction Service
+|
+| Update transaction status

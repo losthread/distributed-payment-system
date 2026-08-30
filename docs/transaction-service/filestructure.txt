@@ -1,0 +1,33 @@
+.
+├── app
+│   ├── __init__.py
+│   ├── __pycache__/
+│   ├── core
+│   │   ├── __init__.py
+│   │   ├── __pycache__/
+│   │   ├── auth.py
+│   │   ├── client.py
+│   │   ├── config.py
+│   │   ├── dependencies.py
+│   │   └── main.py
+│   ├── crud
+│   │   ├── __init__.py
+│   │   ├── __pycache__/
+│   │   └── transactions.py
+│   ├── kafka
+│   │   ├── __pycache__/
+│   │   ├── consumer.py
+│   │   └── producer.py
+│   ├── models
+│   │   ├── __init__.py
+│   │   ├── __pycache__/
+│   │   └── transactions.py
+│   ├── routes
+│   │   ├── __init__.py
+│   │   ├── __pycache__/
+│   │   └── transactions.py
+│   └── tests
+│       └── __init
+├── README.md
+├── requirements.txt
+└── schema.sql

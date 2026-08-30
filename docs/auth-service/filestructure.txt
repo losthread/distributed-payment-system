@@ -3,12 +3,7 @@
 ├── app
 │   ├── core
 │   │   ├── __init__.py
-│   │   ├── __pycache__
-│   │   │   ├── __init__.cpython-314.pyc
-│   │   │   ├── auth.cpython-314.pyc
-│   │   │   ├── config.cpython-314.pyc
-│   │   │   ├── dependencies.cpython-314.pyc
-│   │   │   └── main.cpython-314.pyc
+│   │   ├── __pycache__/
 │   │   ├── auth.py
 │   │   ├── config.py
 │   │   ├── dependencies.py

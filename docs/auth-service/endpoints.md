@@ -17,7 +17,14 @@ Register new user.
 }
 ```
 
-**Response:** `{ "user_id": "uuid", "token": "jwt" }`
+**Response:**
+
+```json
+{ 
+  "user_id": "uuid",
+  "token": "jwt"
+}
+```
 
 ### POST `/auth/login`
 
@@ -32,7 +39,14 @@ Login with email & password.
 }
 ```
 
-**Response:** `{ "user_id": "uuid", "token": "jwt" }`
+**Response:**
+
+```json
+  { 
+    "user_id": "uuid", 
+    "token": "jwt" 
+  }
+```
 
 ### POST `/auth/login/google`
 
@@ -46,7 +60,14 @@ Login with Google token.
 }
 ```
 
-**Response:** `{ "user_id": "uuid", "token": "jwt" }`
+**Response:**
+
+```json
+  {
+    "user_id": "uuid",
+    "token": "jwt" 
+  }
+```
 
 ## User Endpoints
 
@@ -93,4 +114,10 @@ Delete authenticated user profile.
 
 **Auth:** JWT token required
 
-**Response:** `{ "message": "Profile deleted" }`
+**Response:**
+
+```json
+  {
+    "message": "Profile deleted" 
+  }
+```

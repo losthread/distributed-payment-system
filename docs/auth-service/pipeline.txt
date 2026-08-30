@@ -9,9 +9,8 @@ Client
   v
 Auth Service
   |
-  | Validate request
   |
-  | Authenticate user
+  | Authenticate userre
   |
   | Create or retrieve user identity
   |
