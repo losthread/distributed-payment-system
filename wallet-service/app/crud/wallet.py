@@ -12,7 +12,6 @@ def create_wallet(user_id: UUID) -> bool:
       """
         INSERT INTO wallets(user_id)
         VALUES (%s)
-        ON CONFLICT (user_id, currency) DO NOTHING
       """,
       (user_id,)
     )
@@ -37,7 +36,7 @@ def get_my_wallet(user_id: UUID) -> WalletResponse | None:
   try:
     cursor.execute(
       """
-        SELECT id, user_id, balance, currency, created_at, updated_at
+        SELECT id, user_id, balance, created_at, updated_at
         FROM wallets
         WHERE user_id = %s
       """,
@@ -53,9 +52,8 @@ def get_my_wallet(user_id: UUID) -> WalletResponse | None:
       id=row[0],
       user_id=row[1],
       balance=row[2],
-      currency=row[3],
-      created_at=row[4],
-      updated_at=row[5]
+      created_at=row[3],
+      updated_at=row[4]
     )
 
   except OperationalError:
@@ -75,7 +73,7 @@ def get_my_wallet_balance(user_id: UUID) -> WalletBalanceResponse | None:
   try:
     cursor.execute(
       """
-        SELECT balance, currency
+        SELECT balance
         FROM wallets
         WHERE user_id = %s
       """,
@@ -88,8 +86,7 @@ def get_my_wallet_balance(user_id: UUID) -> WalletBalanceResponse | None:
       return None
 
     return WalletBalanceResponse(
-      balance=row[0],
-      currency=row[1]
+      balance=row[0]
     )
 
   except OperationalError:

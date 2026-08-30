@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from threading import Thread
 from contextlib import asynccontextmanager
 from .kafka import consume_events
-from ..routes import wallet
+from ..routes import wallet, internal_wallet
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -23,6 +23,7 @@ app: FastAPI = FastAPI(lifespan = lifespan)
 
 # include routers
 app.include_router(wallet.router)
+app.include_router(internal_wallet.router)
 
 # CORS middleware
 app.add_middleware(

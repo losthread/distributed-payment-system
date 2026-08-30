@@ -17,7 +17,7 @@ def get_internal_wallet(user_id: UUID) -> WalletInternalResponse:
   try:
     cursor.execute(
       """
-        SELECT user_id, balance, currency
+        SELECT user_id, balance
         FROM wallets
         WHERE user_id = %s
       """,
@@ -31,7 +31,6 @@ def get_internal_wallet(user_id: UUID) -> WalletInternalResponse:
     return WalletInternalResponse(
       user_id=row[0],
       balance=row[1],
-      currency=row[2]
     )
 
   except OperationalError:
@@ -54,7 +53,7 @@ def wallet_debit_money(user_id: UUID, amount: Decimal) -> WalletInternalResponse
         UPDATE wallets
         SET balance = balance - %s, updated_at = NOW()
         WHERE user_id = %s AND balance >= %s
-        RETURNING user_id, balance, currency
+        RETURNING user_id, balance
       """,
       (amount, user_id, amount)
     )
@@ -69,7 +68,6 @@ def wallet_debit_money(user_id: UUID, amount: Decimal) -> WalletInternalResponse
     return WalletInternalResponse(
       user_id=row[0],
       balance=row[1],
-      currency=row[2]
     )
 
   except (DataError, InvalidTextRepresentation):
@@ -101,7 +99,7 @@ def wallet_credit_money(user_id: UUID, amount: Decimal) -> WalletInternalRespons
         UPDATE wallets
         SET balance = balance + %s, updated_at = NOW()
         WHERE user_id = %s
-        RETURNING user_id, balance, currency
+        RETURNING user_id, balance
       """,
       (amount, user_id)
     )
@@ -117,7 +115,6 @@ def wallet_credit_money(user_id: UUID, amount: Decimal) -> WalletInternalRespons
     return WalletInternalResponse(
       user_id=row[0],
       balance=row[1],
-      currency=row[2]
     )
 
   except (DataError, InvalidTextRepresentation):

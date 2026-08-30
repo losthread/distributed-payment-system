@@ -8,10 +8,11 @@ class WalletResponse(BaseModel):
   id: int
   user_id: UUID
   balance: Annotated[Decimal, Field(decimal_places=2)]
-  currency: Annotated[str, Field(min_length=3, max_length=3)]
   created_at: datetime
   updated_at: datetime
 
 class WalletBalanceResponse(BaseModel):
   balance: Annotated[Decimal, Field(decimal_places=2)]
-  currency: Annotated[str, Field(min_length=3, max_length=3)]
+
+class WalletAmountRequest(BaseModel):
+  amount: Annotated[Decimal, Field(gt=0)]
