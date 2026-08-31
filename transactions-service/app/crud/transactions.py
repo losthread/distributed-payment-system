@@ -140,6 +140,9 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
       update_transaction_status(transaction_id, "failed")
 
     except httpx.HTTPStatusError as e:
+      # interbnal api refund fails
+      update_transaction_status(transaction_id, "refund_failed")
+
       # send kafka event for refunding as a fallback
       publish_refund_event(
         transaction_id,
