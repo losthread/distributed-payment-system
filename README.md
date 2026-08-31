@@ -1,6 +1,6 @@
 # Distributed Payment System
 
-A microservices-based payment system with auth, wallets, and transactions, built in Python/FastAPI and coordinated via Kafka.
+A microservices-based payment system with auth, wallets, and transactions, built in Python/FastAPI.
 
 ## Architecture
 
