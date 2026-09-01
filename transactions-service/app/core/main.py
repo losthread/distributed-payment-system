@@ -20,5 +20,5 @@ app.add_middleware(
 
 # run server
 if __name__ == '__main__':
-  print("Welcome to Transactions Microservice version 1.0.0")
-  uvicorn.run("app.core.main:app", host = "0.0.0.0", port = 7000, reload = False)
+  print("Welcome to Transactions Microservice version 0.1.0")
+  uvicorn.run("app.core.main:app", host = "0.0.0.0", port = 8002, reload = False)
