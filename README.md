@@ -5,23 +5,34 @@ A microservices-based payment system with auth, wallets, and transactions, built
 ## Architecture
 
 ```text
-┌────────────┐     ┌─────────────┐
-│  Clients   │────▶│  Auth Svc   │─── JWT ───▶
-└────────────┘     └─────┬───────┘
-                         │
-         ┌───────────────┼─────────────────┐
-         ▼               ▼                 ▼
-   ┌──────────┐    ┌──────────┐      ┌──────────┐
-   │ Wallet   │    │ Wallet   │      │   Kafka  │
-   │ Service  │    │ Service  │      │          │
-   └──────────┘    └──────────┘      └────┬─────┘
-         │               │                │
-         └───────────────┼────────────────┘
-                         ▼
-                   ┌───────────┐
-                   │Transaction│
-                   │ Service   │
-                   └───────────┘
+                         ┌─────────────┐
+                         │   Clients   │
+                         └──────┬──────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   API Gateway   │
+                       │                 │
+                       │ Rate Limiting + │
+                       │ Caching (Redis) │
+                       └───────┬─────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              ▼                ▼                ▼
+       ┌────────────┐   ┌────────────┐   ┌──────────────┐
+       │    Auth    │   │   Wallet   │   │ Transaction  │
+       │  Service   │   │  Service   │   │   Service    │
+       └─────┬──────┘   └─────┬──────┘   └──────────────┘
+             │                │ ▲                ▲
+             │                │ │                │
+             │                │ │                │
+             ▼   ┌───────┐    │ │                │
+             └───│ Kafka │────┘ │                │
+                 └───────┘      │                │
+                                │    ┌───────┐   │
+                                └────│ Kafka │   │
+                                     │ + APIs│───┘
+                                     └───────┘
 ```
 
 Three services share a JWT secret and an internal service token; the Wallet Service is the only service that runs a long-lived Kafka consumer.
