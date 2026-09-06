@@ -1,13 +1,14 @@
-from fastapi.middleware.cors import CORSMiddleware
-from ..routes import transactions
 from fastapi import FastAPI
+from routes import auth, users
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-# create FastAPI instance - app that uvicorn serves
+# create fastAPI instance - app tha gunicorn serves
 app: FastAPI = FastAPI()
 
-# include routers
-app.include_router(transactions.router)
+# include routes in app
+app.include_router(auth.router)
+app.include_router(users.router)
 
 # CORS middleware
 app.add_middleware(
@@ -20,5 +21,5 @@ app.add_middleware(
 
 # run server
 if __name__ == '__main__':
-  print("Welcome to Transactions Microservice version 0.1.0")
-  uvicorn.run("app.core.main:app", host = "0.0.0.0", port = 8002, reload = False)
+  print("Welcome to Auth Microservice version 1.0.0")
+  uvicorn.run("app.core.main:app", host = "0.0.0.0", port = 8000, reload = False)

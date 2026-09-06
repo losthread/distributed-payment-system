@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from threading import Thread
 from contextlib import asynccontextmanager
-from .kafka import consume_events
-from ..routes import wallet, internal_wallet
+from .core.kafka import consume_events
+from .routes import wallet, internal_wallet
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
@@ -37,4 +37,4 @@ app.add_middleware(
 # run server
 if __name__ == '__main__':
   print("Welcome to Wallet Microservice version 1.0.0")
-  uvicorn.run("app.core.main:app", host = "0.0.0.0", port = 7000, reload = False)
+  uvicorn.run("app.core.main:app", host = "0.0.0.0", port = 8001, reload = False)

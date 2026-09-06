@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from ..routes import auth, wallets, transactions
-from ..services.ratelimiter import rate_limit
+from .routes import auth, wallets, transactions
+from .services.ratelimiter import rate_limit
 import uvicorn
 
 # create fastAPI instance - app tha gunicorn serves
@@ -34,4 +34,4 @@ app.add_middleware(
 # run server
 if __name__ == "__main__":
   print("Welcome to Auth Microservice version 0.1.0")
-  uvicorn.run("app.core.main:app", host = "0.0.0.0", port = 8000, reload = False)
+  uvicorn.run("app.core.main:app", host = "0.0.0.0", port = 8006, reload = False)

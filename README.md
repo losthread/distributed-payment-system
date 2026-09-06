@@ -37,11 +37,14 @@ A microservices-based payment system with auth, wallets, and transactions, built
 
 Three services share a JWT secret and an internal service token; the Wallet Service is the only service that runs a long-lived Kafka consumer.
 
-| Service             | Port | DB                      | Responsibility                              |
-|---------------------|------|-------------------------|---------------------------------------------|
-| Auth Service        | 8000 | auth_service_db         | Registration, login, JWT issuance, OAuth    |
-| Wallet Service      | 8001 | wallet_service_db       | Wallet CRUD, deposits, withdrawals, refunds |
-| Transaction Service | 8002 | transactions_service_db | Money transfers, transaction lifecycle      |
+| Service                 | Port | DB                      | Responsibility                              |
+|-------------------------|------|-------------------------|---------------------------------------------|
+| Auth Service            | 8000 | auth_service_db         | Registration, login, JWT issuance, OAuth    |
+| Wallet Service          | 8001 | wallet_service_db       | Wallet CRUD, deposits, withdrawals, refunds |
+| Transaction Service     | 8002 | transactions_service_db | Money transfers, transaction lifecycle      |
+| Notification Service    | 8004 | transactions_service_db | Money transfers, transaction lifecycle      |
+| Fraud Detection Service | 8005 | transactions_service_db | Money transfers, transaction lifecycle      |
+| API Gateway             | 8006 | transactions_service_db | Money transfers, transaction lifecycle      |
 
 ## Event Flow (Kafka)
 
@@ -132,4 +135,5 @@ Each service follows the same layout: `app/{core,crud,models,routes,tests}/`.
 - **DB:** PostgreSQL (psycopg3)
 - **Auth:** JWT (PyJWT), Argon2 password hashing, Google OAuth
 - **Messaging:** Kafka (confluent-kafka)
+- **Rate Limiting:** Redis (Token Bucket Algorithm)
 - **Validation:** Pydantic
