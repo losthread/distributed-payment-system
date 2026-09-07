@@ -5,7 +5,7 @@ import socket
 
 # producer configuration
 conf: dict = {
-  'bootstrap.servers': 'localhost:9092',
+  'bootstrap.servers': 'kafka:9092',
   'client.id': socket.gethostname()
 }
 

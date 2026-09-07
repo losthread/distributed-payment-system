@@ -15,7 +15,7 @@ async def create_transaction(request: Request):
   body = await request.json()
 
   response = await client.post(
-    f"{TRANSACTIONS_SERVICE_URL}/transactions/",
+    f"{TRANSACTIONS_SERVICE_URL}/transactions",
     headers={
       "Authorization": request.headers.get("Authorization")
     },
@@ -27,7 +27,7 @@ async def create_transaction(request: Request):
 @router.get("/transactions")
 async def get_transactions(request: Request):
   response = await client.get(
-    f"{TRANSACTIONS_SERVICE_URL}/transactions/",
+    f"{TRANSACTIONS_SERVICE_URL}/transactions",
     headers={
       "Authorization": request.headers.get("Authorization")
     }

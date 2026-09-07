@@ -1,5 +1,5 @@
 # specify base image for python
-FROM python:3.14.5-slim
+FROM python:3.14-slim
 
 # select working directory
 WORKDIR /app

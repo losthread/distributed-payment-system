@@ -5,7 +5,7 @@ import os
 
 load_dotenv()
 
-# instantiate API router
+# instantiate API router  
 router: APIRouter = APIRouter()
 
 AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL")
@@ -18,7 +18,9 @@ async def register(request: Request):
     f"{AUTH_SERVICE_URL}/auth/register",
     json=body
   )
-
+  print("STATUS:", response.status_code)
+  print("BODY:", repr(response.text))
+  print("HEADERS:", response.headers)
   return response.json()
 
 @router.post("/auth/login")

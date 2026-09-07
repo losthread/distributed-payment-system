@@ -14,6 +14,7 @@ import os
 load_dotenv()
 
 INTERNAL_SERVICE_TOKEN = os.getenv("INTERNAL_SERVICE_TOKEN")
+WALLET_SERVICE_URL = os.getenv("WALLET_SERVICE_URL")
 
 def create_pending_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal) -> UUID:
   cursor = conn.cursor()
@@ -79,13 +80,13 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
   print("CREATE TRANSACTION ROUTE HIT")
   # debit sender(if fail = transaction fail) ->
   # -> credit receiver (if fail, refund sender) ->
-  # -> refund sender (id fail, kafka event refund in a separate thread)
+  # -> refund sender (id fail, kafka event refund as a separate service)
 
   transaction_id = create_pending_transaction(sender_id, receiver_id, amount)
   # debit sender's account
   try:
     debit_response = await client.post(
-      f"http://localhost:8001/internal/wallets/{sender_id}/debit",
+      f"{WALLET_SERVICE_URL}/internal/wallets/{sender_id}/debit",
       headers={
         "Authorization": f"Bearer {INTERNAL_SERVICE_TOKEN}"
       },
@@ -102,10 +103,14 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
     update_transaction_status(transaction_id, "failed")
     raise HTTPException(status_code = e.response.status_code, detail = e.response.json().get("detail", "Debit failed"))
 
+  except httpx.RequestError as e:
+    update_transaction_status(transaction_id, "failed")
+    raise HTTPException(status_code = status.HTTP_503_SERVICE_UNAVAILABLE, detail="Wallet service unavailable")
+
   # credit the receiver if debit succeeds
   try:
     credit_response = await client.post(
-      f"http://localhost:8001/internal/wallets/{receiver_id}/credit",
+      f"{WALLET_SERVICE_URL}/internal/wallets/{receiver_id}/credit",
       headers={
         "Authorization": f"Bearer {INTERNAL_SERVICE_TOKEN}"
       },
@@ -115,6 +120,7 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
     )
 
     credit_response.raise_for_status()
+
     # transaction complete
     update_transaction_status(transaction_id, "completed")
 
@@ -122,11 +128,11 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
 
     return transaction
 
-  except httpx.RequestError as e:
-    # refund using internal api -> if fail -> send kafka event to repeat this 3 times
+  except httpx.HTTPStatusError:
+    # refund using internal api -> if fail -> send kafka event
     try:
-      credit_response = await client.post(
-        f"http://localhost:8001/internal/wallets/{sender_id}/credit",
+      refund_response = await client.post(
+        f"{WALLET_SERVICE_URL}/internal/wallets/{sender_id}/credit",
         headers={
           "Authorization": f"Bearer {INTERNAL_SERVICE_TOKEN}"
         },
@@ -135,29 +141,93 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
         }
       )
 
-      credit_response.raise_for_status()
-      # transaction complete
+      refund_response.raise_for_status()
+
       update_transaction_status(transaction_id, "failed")
 
-    except httpx.HTTPStatusError as e:
-      # interbnal api refund fails
+    except httpx.HTTPStatusError:
       update_transaction_status(transaction_id, "refund_failed")
 
-      # send kafka event for refunding as a fallback
       publish_refund_event(
         transaction_id,
         sender_id,
         amount
       )
-      status_code = e.response.status_code if e.response else 503
 
       raise HTTPException(
-        status_code=status_code,
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         detail="Payment failed. Refund has been initiated."
       )
-    
-    raise HTTPException(status_code = e.response.status_code, detail = e.response.json().get("detail", "Credit failed, refunding money to the sender"))
 
+    except httpx.RequestError:
+      update_transaction_status(transaction_id, "refund_failed")
+
+      publish_refund_event(
+        transaction_id,
+        sender_id,
+        amount
+      )
+
+      raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Payment failed. Refund has been initiated."
+      )
+
+    raise HTTPException(
+      status_code=status.HTTP_502_BAD_GATEWAY,
+      detail="Receiver credit failed. Sender has been refunded."
+    )
+
+  except httpx.RequestError:
+    # receiver service unreachable -> refund
+    try:
+      refund_response = await client.post(
+        f"{WALLET_SERVICE_URL}/internal/wallets/{sender_id}/credit",
+        headers={
+          "Authorization": f"Bearer {INTERNAL_SERVICE_TOKEN}"
+        },
+        json={
+          "amount": str(amount)
+        }
+      )
+
+      refund_response.raise_for_status()
+
+      update_transaction_status(transaction_id, "failed")
+
+    except httpx.HTTPStatusError:
+      update_transaction_status(transaction_id, "refund_failed")
+
+      publish_refund_event(
+        transaction_id,
+        sender_id,
+        amount
+      )
+
+      raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Payment failed. Refund has been initiated."
+      )
+
+    except httpx.RequestError:
+      update_transaction_status(transaction_id, "refund_failed")
+
+      publish_refund_event(
+        transaction_id,
+        sender_id,
+        amount
+      )
+
+      raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Payment failed. Refund has been initiated."
+      )
+
+    raise HTTPException(
+      status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+      detail="Receiver wallet service unavailable. Sender has been refunded."
+    )
+  
 def get_transaction(transaction_id: UUID, user_id: UUID) -> TransactionResponse:
   cursor = conn.cursor()
 

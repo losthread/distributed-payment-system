@@ -8,7 +8,7 @@ import json
 
 # consumer configuration
 consumer_conf: dict = {
-  'bootstrap.servers': 'localhost:9092',
+  'bootstrap.servers': 'kafka:9092',
   'group.id': 'wallets-service-group',
   'auto.offset.reset': 'earliest',
   'client.id': socket.gethostname()
@@ -16,7 +16,7 @@ consumer_conf: dict = {
 
 # producer configuration
 producer_conf: dict = {
-  'bootstrap.servers': 'localhost:9092',
+  'bootstrap.servers': 'kafka:9092',
   'client.id': socket.gethostname()
 }
 

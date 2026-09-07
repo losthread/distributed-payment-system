@@ -7,11 +7,11 @@ from uuid import UUID
 # instantiate api router
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
-@router.post("/", response_model = TransactionResponse)
+@router.post("", response_model = TransactionResponse)
 async def create_transaction(data: TransactionCreateRequest, user_id: UUID = Depends(get_user_id)) -> TransactionResponse:
   return await transactions.create_transaction(sender_id = user_id, receiver_id = data.receiver_id, amount = data.amount)
 
-@router.get("/", response_model = list[TransactionResponse])
+@router.get("", response_model = list[TransactionResponse])
 async def get_transactions(user_id: UUID = Depends(get_user_id)) -> list[TransactionResponse]:
   return transactions.get_transactions(user_id)
 

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import auth, users
+from .routes import auth, users
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 

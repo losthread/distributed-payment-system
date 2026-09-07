@@ -6,7 +6,7 @@ import json
 
 # consumer configuration
 consumer_conf: dict = {
-  'bootstrap.servers': 'localhost:9092',
+  'bootstrap.servers': 'kafka:9092',
   'group.id': 'transactions-service-group',
   'auto.offset.reset': 'earliest',
   'client.id': socket.gethostname()
