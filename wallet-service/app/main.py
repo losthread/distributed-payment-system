@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from threading import Thread
 from contextlib import asynccontextmanager
-from .core.kafka import consume_events
+from .kafka.consumer import consume_events
 from .routes import wallet, internal_wallet
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn

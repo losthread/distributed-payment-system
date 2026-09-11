@@ -1,4 +1,5 @@
 from ..models.internal_wallet import WalletInternalResponse
+from ..kafka.producer import publish_wallet_recharge_failed, publish_wallet_recharge_successful, publish_wallet_withdraw_failed, publish_wallet_withdraw_successful
 from ..core.config import conn
 from fastapi import HTTPException, status
 from uuid import UUID
@@ -135,3 +136,29 @@ def wallet_credit_money(user_id: UUID, amount: Decimal) -> WalletInternalRespons
 
   finally:
     cursor.close()
+
+### separate functions for depositing and withdraw, to raise notifications ###
+### otherwise they would get mispublished for transactions ###
+### since the same functions are used for sending money ###
+def wallet_deposit(user_id: UUID, amount: Decimal) -> WalletInternalResponse:
+  try:
+    wallet = wallet_credit_money(user_id, amount)
+    publish_wallet_recharge_successful(user_id, amount)
+
+    return wallet
+
+  except HTTPException:
+    publish_wallet_recharge_failed(user_id, amount)
+    raise
+
+
+def wallet_withdraw(user_id: UUID, amount: Decimal) -> WalletInternalResponse:
+  try:
+    wallet = wallet_debit_money(user_id, amount)
+    publish_wallet_withdraw_successful(user_id, amount)
+
+    return wallet
+
+  except HTTPException:
+    publish_wallet_withdraw_failed(user_id, amount)
+    raise

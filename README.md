@@ -37,14 +37,14 @@ A microservices-based payment system with auth, wallets, and transactions, built
 
 Three services share a JWT secret and an internal service token; the Wallet Service is the only service that runs a long-lived Kafka consumer.
 
-| Service                 | Port | DB                      | Responsibility                              |
-|-------------------------|------|-------------------------|---------------------------------------------|
-| Auth Service            | 8000 | auth_service_db         | Registration, login, JWT issuance, OAuth    |
-| Wallet Service          | 8001 | wallet_service_db       | Wallet CRUD, deposits, withdrawals, refunds |
-| Transaction Service     | 8002 | transactions_service_db | Money transfers, transaction lifecycle      |
-| Notification Service    | 8004 | transactions_service_db | Money transfers, transaction lifecycle      |
-| Fraud Detection Service | 8005 | transactions_service_db | Money transfers, transaction lifecycle      |
-| API Gateway             | 8006 | transactions_service_db | Money transfers, transaction lifecycle      |
+| Service                 | Port | DB              | Responsibility                              |
+|-------------------------|------|-----------------|---------------------------------------------|
+| Auth Service            | 8000 | auth_db         | Registration, login, JWT issuance, OAuth    |
+| Wallet Service          | 8001 | wallet_db       | Wallet CRUD, deposits, withdrawals, refunds |
+| Transaction Service     | 8002 | transactions_db | Money transfers, transaction lifecycle      |
+| Notification Service    | 8004 | notification_db | User Notifications                          |
+| Fraud Detection Service | 8005 | fraud_db        | Detecting Potential Fraud, flagging users   |
+| API Gateway             | 8006 |        -        | Frontend entrypoint, rate limiting          |
 
 ## Event Flow (Kafka)
 

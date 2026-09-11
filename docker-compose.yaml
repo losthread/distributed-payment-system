@@ -2,6 +2,7 @@ volumes:
   auth_postgres_data:
   wallet_postgres_data:
   transactions_postgres_data:
+  notification_postgres_data:
 
 services:
   # kafka
@@ -81,6 +82,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # Notification database
+  postgres-notification:
+    image: postgres:18-alpine
+    container_name: postgres-notification
+    environment:
+      POSTGRES_USER: ${NOTIFICATION_DB_USER}
+      POSTGRES_PASSWORD: ${NOTIFICATION_DB_PASSWORD}
+      POSTGRES_DB: notification_db
+    volumes:
+      - notification_postgres_data:/var/lib/postgresql
+      - ./notification-service/db_setup.sql:/docker-entrypoint-initdb.d/db_setup.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${NOTIFICATION_DB_USER} -d notification_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   # auth service
   auth-service:
     build: ./auth-service
@@ -112,6 +130,17 @@ services:
       - ./transactions-service/.env
     depends_on:
       postgres-transactions:
+        condition: service_healthy
+
+  # notification service
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8003:8003"
+    env_file:
+      - ./notification-service/.env
+    depends_on:
+      postgres-notification:
         condition: service_healthy
 
   # API gateway

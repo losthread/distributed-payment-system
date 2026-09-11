@@ -1,6 +1,6 @@
 from ..models.transactions import TransactionResponse
 from psycopg.errors import OperationalError, DatabaseError
-from ..kafka.producer import publish_refund_event
+from ..kafka.producer import publish_refund_event, publish_transaction_successful, publish_transaction_failed, publish_transaction_pending, publish_refund_successful
 from ..core.config import conn
 from fastapi import HTTPException, status
 from ..core.client import client
@@ -77,12 +77,21 @@ def update_transaction_status(transaction_id: UUID, transaction_status: str) -> 
     cursor.close()
 
 async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal) -> TransactionResponse:
-  print("CREATE TRANSACTION ROUTE HIT")
   # debit sender(if fail = transaction fail) ->
   # -> credit receiver (if fail, refund sender) ->
   # -> refund sender (id fail, kafka event refund as a separate service)
-
   transaction_id = create_pending_transaction(sender_id, receiver_id, amount)
+
+  try:
+    publish_transaction_pending(transaction_id, sender_id, receiver_id, amount)
+
+  except Exception as e:
+    print("KAFKA ERROR:", repr(e))
+    raise HTTPException(
+      status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+      detail="Transaction event service unavailable"
+    )
+
   # debit sender's account
   try:
     debit_response = await client.post(
@@ -101,10 +110,12 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
   except httpx.HTTPStatusError as e:
     print("HTTP ERROR:", repr(e))
     update_transaction_status(transaction_id, "failed")
+    publish_transaction_failed(transaction_id, sender_id, receiver_id, amount)
     raise HTTPException(status_code = e.response.status_code, detail = e.response.json().get("detail", "Debit failed"))
 
   except httpx.RequestError as e:
     update_transaction_status(transaction_id, "failed")
+    publish_transaction_failed(transaction_id, sender_id, receiver_id, amount)
     raise HTTPException(status_code = status.HTTP_503_SERVICE_UNAVAILABLE, detail="Wallet service unavailable")
 
   # credit the receiver if debit succeeds
@@ -123,12 +134,39 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
 
     # transaction complete
     update_transaction_status(transaction_id, "completed")
+    publish_transaction_successful(transaction_id, sender_id, receiver_id, amount)
 
-    transaction = get_transaction(transaction_id, sender_id)
+    cursor = conn.cursor()
 
-    return transaction
+    try:
+      cursor.execute(
+        """
+          SELECT id, transaction_id, sender_id, receiver_id,
+                amount, currency, status, created_at, updated_at
+          FROM transactions
+          WHERE transaction_id = %s
+        """,
+        (transaction_id,)
+      )
 
-  except httpx.HTTPStatusError:
+      row = cursor.fetchone()
+
+      return TransactionResponse(
+        id=row[0],
+        transaction_id=row[1],
+        sender_id=row[2],
+        receiver_id=row[3],
+        amount=row[4],
+        currency=row[5],
+        status=row[6],
+        created_at=row[7],
+        updated_at=row[8]
+      )
+
+    finally:
+      cursor.close()
+
+  except (httpx.HTTPStatusError, httpx.RequestError):
     # refund using internal api -> if fail -> send kafka event
     try:
       refund_response = await client.post(
@@ -143,25 +181,10 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
 
       refund_response.raise_for_status()
 
+      publish_refund_successful(transaction_id, sender_id, amount)
       update_transaction_status(transaction_id, "failed")
 
-    except httpx.HTTPStatusError:
-      update_transaction_status(transaction_id, "refund_failed")
-
-      publish_refund_event(
-        transaction_id,
-        sender_id,
-        amount
-      )
-
-      raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Payment failed. Refund has been initiated."
-      )
-
-    except httpx.RequestError:
-      update_transaction_status(transaction_id, "refund_failed")
-
+    except (httpx.HTTPStatusError, httpx.RequestError):
       publish_refund_event(
         transaction_id,
         sender_id,
@@ -177,96 +200,6 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
       status_code=status.HTTP_502_BAD_GATEWAY,
       detail="Receiver credit failed. Sender has been refunded."
     )
-
-  except httpx.RequestError:
-    # receiver service unreachable -> refund
-    try:
-      refund_response = await client.post(
-        f"{WALLET_SERVICE_URL}/internal/wallets/{sender_id}/credit",
-        headers={
-          "Authorization": f"Bearer {INTERNAL_SERVICE_TOKEN}"
-        },
-        json={
-          "amount": str(amount)
-        }
-      )
-
-      refund_response.raise_for_status()
-
-      update_transaction_status(transaction_id, "failed")
-
-    except httpx.HTTPStatusError:
-      update_transaction_status(transaction_id, "refund_failed")
-
-      publish_refund_event(
-        transaction_id,
-        sender_id,
-        amount
-      )
-
-      raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Payment failed. Refund has been initiated."
-      )
-
-    except httpx.RequestError:
-      update_transaction_status(transaction_id, "refund_failed")
-
-      publish_refund_event(
-        transaction_id,
-        sender_id,
-        amount
-      )
-
-      raise HTTPException(
-        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-        detail="Payment failed. Refund has been initiated."
-      )
-
-    raise HTTPException(
-      status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-      detail="Receiver wallet service unavailable. Sender has been refunded."
-    )
-  
-def get_transaction(transaction_id: UUID, user_id: UUID) -> TransactionResponse:
-  cursor = conn.cursor()
-
-  try:
-    cursor.execute(
-      """
-        SELECT transaction_id, sender_id, receiver_id, amount, status, created_at, updated_at
-        FROM transactions
-        WHERE transaction_id = %s AND (sender_id = %s OR receiver_id = %s)
-      """,
-      (transaction_id, user_id, user_id)
-    )
-    row = cursor.fetchone()
-
-    if row is None:
-      raise HTTPException(status_code=404, detail="Transaction not found")
-
-    return TransactionResponse(
-      transaction_id=row[0],
-      sender_id=row[1],
-      receiver_id=row[2],
-      amount=row[3],
-      status=row[4],
-      created_at=row[5],
-      updated_at=row[6]
-    )
-
-  except OperationalError as e:
-    conn.rollback()
-    print("OPERATIONAL ERROR:", repr(e))
-    raise HTTPException(status_code=503, detail="Database unavailable")
-
-  except DatabaseError as e:
-    conn.rollback()
-    print("DATABASE ERROR:", repr(e))
-    raise HTTPException(status_code=500, detail="Database error")
-
-  finally:
-    cursor.close()
 
 def get_transactions(user_id: UUID) -> list[TransactionResponse]:
   cursor = conn.cursor()

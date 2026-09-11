@@ -1,4 +1,5 @@
-from confluent_kafka import Consumer, Producer
+from confluent_kafka import Consumer
+from ..kafka.producer import producer
 from ..crud.wallet import create_wallet
 from ..crud.internal_wallet import wallet_credit_money
 from uuid import UUID
@@ -14,14 +15,7 @@ consumer_conf: dict = {
   'client.id': socket.gethostname()
 }
 
-# producer configuration
-producer_conf: dict = {
-  'bootstrap.servers': 'kafka:9092',
-  'client.id': socket.gethostname()
-}
-
 consumer: Consumer = Consumer(consumer_conf)
-producer: Producer = Producer(producer_conf)
 
 consumer.subscribe(["user-events", "refund-events"])
 
@@ -85,14 +79,17 @@ def consume_events():
             })
           )
 
-        # max attempts reached but still refund fails -> notify transaction service
+        # max attempts reached but still refund fails -> notify transaction and notification service
+        # refund failed
         else:
           producer.produce(
             "transaction-events",
             key=str(transaction_id),
             value=json.dumps({
               "event": "refund.failed",
-              "transaction_id": str(transaction_id)
+              "transaction_id": str(transaction_id),
+              "sender_id": str(sender_id),
+              "amount": str(amount),
             })
           )
 

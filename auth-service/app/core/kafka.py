@@ -24,3 +24,15 @@ def publish_user_created_event(user_id: UUID) -> None:
   )
 
   producer.flush()
+
+def publish_user_login_event(user_id: UUID) -> None:
+  event: dict = {
+    "event": "user.logged.in",
+    "user_id": str(user_id)
+  }
+
+  producer.produce(
+    "user-events",
+    key=str(user_id),
+    value=json.dumps(event)
+  )

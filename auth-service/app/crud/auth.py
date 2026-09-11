@@ -1,6 +1,6 @@
 from ..core.config import conn
 from ..core.auth import  hash_password, verify_password, create_jwt_token, verify_google_token
-from ..core.kafka import publish_user_created_event
+from ..core.kafka import publish_user_created_event, publish_user_login_event
 from psycopg.errors import UniqueViolation, NotNullViolation, CheckViolation, InvalidTextRepresentation, OperationalError
 from fastapi import HTTPException, status
 from pydantic import EmailStr
@@ -75,6 +75,8 @@ def login(login_identifier: str, password: str):
 
     if not verify_password(password, stored_password_hash):
       raise HTTPException(status_code = 401, detail = "Email or password is incorrect")
+
+    publish_user_login_event(user_id)
     
     # create token 
     token = create_jwt_token(user_id)
@@ -136,6 +138,7 @@ def google_login(google_token: str):
       conn.commit()
 
     user_id = row[0]
+    publish_user_login_event(user_id)
 
     # create JWT
     token = create_jwt_token(user_id)

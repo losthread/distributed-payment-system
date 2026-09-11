@@ -32,13 +32,14 @@ def consume_events():
     event = json.loads(message.value().decode("utf-8"))
 
     if event["event"] == "refund.completed":
-      # update transaction status from 'refund_failed' -> 'failed'
+      # update transaction status from 'pending' -> 'failed'
       transaction_id = UUID(event.get("transaction_id"))
       update_transaction_status(transaction_id, "failed")
       consumer.commit(message)
 
     elif event["event"] == "refund.failed":
-      # update transaction status from 'refund_failed' -> 'failed'
+      # wallet service already published the refund.failed event;
+      # transaction service just records the failure status
       transaction_id = UUID(event.get("transaction_id"))
       update_transaction_status(transaction_id, "refund_failed")
       consumer.commit(message)
