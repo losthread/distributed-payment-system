@@ -5,34 +5,36 @@ A microservices-based payment system with auth, wallets, and transactions, built
 ## Architecture
 
 ```text
-                         ┌─────────────┐
-                         │   Clients   │
-                         └──────┬──────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │   API Gateway   │
-                       │                 │
-                       │ Rate Limiting + │
-                       │ Caching (Redis) │
-                       └───────┬─────────┘
-                               │
-              ┌────────────────┼────────────────┐
-              ▼                ▼                ▼
-       ┌────────────┐   ┌────────────┐   ┌──────────────┐
-       │    Auth    │   │   Wallet   │   │ Transaction  │
-       │  Service   │   │  Service   │   │   Service    │
-       └─────┬──────┘   └─────┬──────┘   └──────────────┘
-             │                │ ▲                ▲
-             │                │ │                │
-             │                │ │                │
-             ▼   ┌───────┐    │ │                │
-             └───│ Kafka │────┘ │                │
-                 └───────┘      │                │
-                                │    ┌───────┐   │
-                                └────│ Kafka │   │
-                                     │ + APIs│───┘
-                                     └───────┘
+                                   ┌──────────────┐
+                                   │    Clients   │
+                                   └───────┬──────┘
+                                           │
+                                           ▼
+                                 ┌───────────────────┐
+                                 │     API Gateway   │
+                                 │  +(Rate Limiting) │
+                                 └────────┬──────────┘
+                                          │
+              ┌────────────────┬──────────┼─────┬───────────────────┐
+              ▼                ▼                ▼                   ▼
+       ┌────────────┐   ┌────────────┐   ┌──────────────┐   ┌───────────────┐
+       │    Auth    │   │   Wallet   │   │ Transaction  │   │  Notification │
+       │  Service   │   │  Service   │   │   Service    │   │   Service     │
+       └─┬─────┬────┘   └──────┬─────┘   └──────────────┘   └───────────────┘
+         │     │             ▲ │  ▲               ▲  │              ▲
+         │     ▼   ┌───────┐ │ │  ▼               ▼  │              │
+         │     └───│ Kafka │─┘ │  │               │  │              │
+         │         └───────┘   │  │               │  │              │
+         │                     │  │    ┌───────┐  │  │              │
+         │                     │  └────│ Kafka │  │  │              │
+         │                     │       │ + APIs│──┘  │              │
+         │                     │       └───────┘     │              │
+         │                     │                     │              │
+         ▼                     ▼     ┌──────────┐    ▼              │  
+         └───────────────────────────│          │────┘              │         
+                                     │  Kafka   │                   │  
+                                     │          │───────────────────┘
+                                     └──────────┘
 ```
 
 Three services share a JWT secret and an internal service token; the Wallet Service is the only service that runs a long-lived Kafka consumer.
@@ -43,20 +45,7 @@ Three services share a JWT secret and an internal service token; the Wallet Serv
 | Wallet Service          | 8001 | wallet_db       | Wallet CRUD, deposits, withdrawals, refunds |
 | Transaction Service     | 8002 | transactions_db | Money transfers, transaction lifecycle      |
 | Notification Service    | 8004 | notification_db | User Notifications                          |
-| Fraud Detection Service | 8005 | fraud_db        | Detecting Potential Fraud, flagging users   |
 | API Gateway             | 8006 |        -        | Frontend entrypoint, rate limiting          |
-
-## Event Flow (Kafka)
-
-```text
-Auth Service          user.created ─────────────────────▶ Kafka ──▶ Wallet Service
-                                              (creates wallet, balance 0.00)
-
-Transaction Service ─ debit ─► Wallet Service
-Transaction Service ─ credit ─► Wallet Service
-   │ credit fails │ refund fails ──► refund.requested ──► Kafka ──▶ Wallet Service
-                                                        (retries 3x, emits refund.completed / refund.failed)
-```
 
 ## API
 
@@ -93,39 +82,72 @@ Transaction Service ─ credit ─► Wallet Service
 
 Transaction statuses: `pending` → `completed` | `failed` | `refund_failed`
 
-## Running
+### Notification Service — `/notifications`
+
+| Method   | Path                          | Auth   | Description                                |
+|----------|-------------------------------|--------|--------------------------------------------|
+| GET      | `/notifications`              | JWT    | Get all notifications for user             |
+| PATCH    | `/notifications/read-all`     | JWT    | Mark all notifications as read             |
+| DELETE   | `/notifications/delete-all`   | JWT    | Delete all notifications                   |
+| GET      | `/notifications/{id}`         | JWT    | Get specific notification                  |
+| PATCH    | `/notifications/{id}/read`    | JWT    | Mark specific notification as read         |
+| DELETE   | `/notifications/{id}`         | JWT    | Delete specific notification               |
+
+## Running the Project
+
+## Clone the Repository
 
 ```bash
-# Start Kafka
-docker compose up -d
+git clone https://github.com/losthread/distributed-payment-system.git
+cd distributed-payment-system
 
-# In each service directory
-cd auth-service && pip install -r requirements.txt && uvicorn app.main:app --reload -p 8000
-cd wallet-service  && pip install -r requirements.txt && uvicorn app.main:app --reload -p 8001
-cd transactions-service && pip install -r requirements.txt && uvicorn app.main:app --reload -p 8002
+## Running With Docker
+
+```bash
+# Orchestrate services
+# build and start
+docker compose up -d --build
+# start without rebuilding
+docker compose up -d
+# view running services
+docker compose ps
+# stop containers
+docker compose down
 ```
 
-Apply DB schema in each service before running:
+## Running Without Docker
 
 ```bash
-psql $DATABASE_URL < schema.sql
+# create a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+# instal dependencies
+pip install -r requirements.txt
+# create a .env file inside each service directory like .env.example and configure environment variables
+touch .env
+# make sure PostgreSQL, Kafka and Redis are running before starting the services
+# run each service in a separate terminal
+uvicorn app.core.main:app --reload --host 0.0.0.0 --port <PORT>
+# once all services are running use the API gateway to interact with the application
 ```
 
 ## Project Structure
 
 ```text
 .
-├── docker-compose.yaml   # Kafka (single broker)
-├── docs/
+├ docker-compose.yaml
+├ docs/
+│   ├── api-service/
 │   ├── auth-service/
+│   ├── notification-service/
 │   ├── transaction-service/
 │   └── wallet-service/
-├── auth-service/
-├── wallet-service/
-└── transactions-service/
+├ api-gateway/
+├ auth-service/
+├ wallet-service/
+├ notification-service/
+└ transactions-service/
 ```
-
-> Note: Microservices are not containerized yet
 
 Each service follows the same layout: `app/{core,crud,models,routes,tests}/`.
 
