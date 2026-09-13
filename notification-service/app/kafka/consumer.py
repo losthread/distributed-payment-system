@@ -29,6 +29,7 @@ def consumer_events():
 
     # convert raw byte string -> json -> dict
     event = json.loads(message.value().decode("utf-8"))
+    print("RECEIVED:", event)
 
     if event["event"] in [
       "payment.successful",

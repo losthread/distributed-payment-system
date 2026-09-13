@@ -1,8 +1,7 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE notifications (
-  id SERIAL PRIMARY KEY,
-  notification_id UUID NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+  notification_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
   message VARCHAR(255) NOT NULL,
   is_read BOOLEAN NOT NULL DEFAULT FALSE,

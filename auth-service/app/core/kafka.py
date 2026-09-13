@@ -25,6 +25,13 @@ def publish_user_created_event(user_id: UUID) -> None:
 
   producer.flush()
 
+def delivery_report(err, message):
+  if err is not None:
+    print("Kafka delivery failed:", err)
+  else:
+    print("Kafka delivered:", message.topic(), message.partition(), message.offset())
+
+
 def publish_user_login_event(user_id: UUID) -> None:
   event: dict = {
     "event": "user.logged.in",
@@ -34,5 +41,8 @@ def publish_user_login_event(user_id: UUID) -> None:
   producer.produce(
     "user-events",
     key=str(user_id),
-    value=json.dumps(event)
+    value=json.dumps(event),
+    callback=delivery_report
   )
+
+  producer.flush()

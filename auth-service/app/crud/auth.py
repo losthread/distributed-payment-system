@@ -1,7 +1,7 @@
 from ..core.config import conn
 from ..core.auth import  hash_password, verify_password, create_jwt_token, verify_google_token
 from ..core.kafka import publish_user_created_event, publish_user_login_event
-from psycopg.errors import UniqueViolation, NotNullViolation, CheckViolation, InvalidTextRepresentation, OperationalError
+from psycopg.errors import UniqueViolation, NotNullViolation, CheckViolation, InvalidTextRepresentation, Error
 from fastapi import HTTPException, status
 from pydantic import EmailStr
 
@@ -40,7 +40,7 @@ def register(username: str | None, email: EmailStr, password: str) -> dict:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Username or email is required")
 
   # database connection/server error
-  except OperationalError:
+  except Error:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
@@ -87,15 +87,15 @@ def login(login_identifier: str, password: str):
       "user_id": user_id
     }
 
-  # database connection/server error
-  except OperationalError:
-    conn.rollback()
-    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
-
   # invalid PostgreSQL value/type
   except InvalidTextRepresentation:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid login identifier")
+
+  # database connection/server error
+  except Error:
+    conn.rollback()
+    raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
   finally:
     cursor.close()
@@ -165,7 +165,7 @@ def google_login(google_token: str):
     raise HTTPException(status_code=400, detail="Required field is missing")
 
   # database unavailable
-  except OperationalError:
+  except Error:
     conn.rollback()
     raise HTTPException(status_code=500, detail="Database error")
 

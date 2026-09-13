@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from .routes import root, auth, wallets, transactions
+from .routes import root, auth, wallets, transactions, notification
 from .services.ratelimiter import rate_limit
 import uvicorn
 
@@ -11,6 +11,7 @@ app.include_router(root.router)
 app.include_router(auth.router)
 app.include_router(wallets.router)
 app.include_router(transactions.router)
+app.include_router(notification.router)
 
 # IP logging middleware for rate limiting
 @app.middleware("http")
@@ -28,7 +29,7 @@ app.add_middleware(
   CORSMiddleware,
   allow_origins=['http://localhost:5173', 'http://localhost:5174'], # add prod frontend url later
   allow_credentials=True,
-  allow_methods=["GET", "POST", "PUT", "DELETE"],
+  allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
   allow_headers=["Content-Type", "Authorization"],
 )
 

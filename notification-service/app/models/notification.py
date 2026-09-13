@@ -3,7 +3,7 @@ from datetime import datetime
 from uuid import UUID
 
 class NotificationResponse(BaseModel):
-  id: UUID
+  notification_id: UUID
   user_id: UUID
   message: str
   is_read: bool

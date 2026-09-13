@@ -1,6 +1,6 @@
 from ..core.config import conn
 from ..models.users import UserProfileResponse, UserProfileUpdate
-from psycopg.errors import UniqueViolation, OperationalError
+from psycopg.errors import UniqueViolation, Error, Error
 from fastapi import HTTPException, status
 from uuid import UUID
 
@@ -30,7 +30,7 @@ def get_my_profile(user_id: UUID) -> UserProfileResponse:
       updated_at = row[4]
     )
 
-  except OperationalError:
+  except Error:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
@@ -83,7 +83,7 @@ def update_my_profile(user_id: UUID, profile: UserProfileUpdate) -> UserProfileR
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email or username already exists")
 
-  except OperationalError:
+  except Error:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
@@ -112,7 +112,7 @@ def delete_my_profile(user_id: UUID) -> dict:
 
     return {"message": "Profile deleted successfully"}
 
-  except OperationalError:
+  except Error:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 

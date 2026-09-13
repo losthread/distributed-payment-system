@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from psycopg.errors import OperationalError, DatabaseError
+from psycopg.errors import OperationalError, Error
 from ..core.config import conn
 from ..models.notification import NotificationResponse
 from uuid import UUID
@@ -10,7 +10,7 @@ def get_all_notifications(user_id: UUID) -> list[NotificationResponse]:
   try:
     cursor.execute(
       """
-        SELECT id, user_id, message, is_read, created_at, updated_at
+        SELECT notification_id, user_id, message, is_read, created_at, updated_at
         FROM notifications
         WHERE user_id = %s
         ORDER BY created_at DESC
@@ -22,7 +22,7 @@ def get_all_notifications(user_id: UUID) -> list[NotificationResponse]:
 
     return [
       NotificationResponse(
-        id=row[0],
+        notification_id=row[0],
         user_id=row[1],
         message=row[2],
         is_read=row[3],
@@ -32,14 +32,15 @@ def get_all_notifications(user_id: UUID) -> list[NotificationResponse]:
       for row in rows
     ]
 
-  except OperationalError:
+  except OperationalError as e:
     conn.rollback()
+    print(repr(e))
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
       detail="Database unavailable"
     )
   
-  except DatabaseError:
+  except Error as e:
     conn.rollback()
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -58,7 +59,7 @@ def read_all_notifications(user_id: UUID) -> list[NotificationResponse]:
         UPDATE notifications
         SET is_read = TRUE, updated_at = NOW()
         WHERE user_id = %s
-        RETURNING id, user_id, message, is_read, created_at, updated_at
+        RETURNING notification_id, user_id, message, is_read, created_at, updated_at
       """,
       (user_id,)
     )
@@ -68,7 +69,7 @@ def read_all_notifications(user_id: UUID) -> list[NotificationResponse]:
 
     return [
       NotificationResponse(
-        id=row[0],
+        notification_id=row[0],
         user_id=row[1],
         message=row[2],
         is_read=row[3],
@@ -78,15 +79,17 @@ def read_all_notifications(user_id: UUID) -> list[NotificationResponse]:
       for row in rows
     ]
 
-  except OperationalError:
+  except OperationalError as e:
     conn.rollback()
+    print(repr(e))
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
       detail="Database unavailable"
     )
   
-  except DatabaseError:
+  except Error as e:
     conn.rollback()
+    print(repr(e))
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
       detail="Database error"
@@ -95,7 +98,7 @@ def read_all_notifications(user_id: UUID) -> list[NotificationResponse]:
   finally:
     cursor.close()
 
-def delete_all_notification(user_id: UUID) -> dict:
+def delete_all_notifications(user_id: UUID) -> dict:
   cursor = conn.cursor()
 
   try:
@@ -115,14 +118,15 @@ def delete_all_notification(user_id: UUID) -> dict:
       "deleted_count": deleted_count
     }
 
-  except OperationalError:
+  except OperationalError as e:
     conn.rollback()
+    print(repr(e))
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
       detail="Database unavailable"
     )
   
-  except DatabaseError:
+  except Error as e:
     conn.rollback()
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -138,9 +142,9 @@ def get_notification(notification_id: UUID, user_id: UUID) -> NotificationRespon
   try:
     cursor.execute(
       """
-        SELECT id, user_id, message, is_read, created_at, updated_at
+        SELECT notification_id, user_id, message, is_read, created_at, updated_at
         FROM notifications
-        WHERE id = %s AND user_id = %s
+        WHERE notification_id = %s AND user_id = %s
       """,
       (notification_id, user_id)
     )
@@ -154,7 +158,7 @@ def get_notification(notification_id: UUID, user_id: UUID) -> NotificationRespon
       )
 
     return NotificationResponse(
-      id=row[0],
+      notification_id=row[0],
       user_id=row[1],
       message=row[2],
       is_read=row[3],
@@ -162,14 +166,15 @@ def get_notification(notification_id: UUID, user_id: UUID) -> NotificationRespon
       updated_at=row[5]
     )
 
-  except OperationalError:
+  except OperationalError as e:
     conn.rollback()
+    print(repr(e))
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
       detail="Database unavailable"
     )
   
-  except DatabaseError:
+  except Error as e:
     conn.rollback()
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -187,8 +192,8 @@ def read_notification(notification_id: UUID, user_id: UUID) -> NotificationRespo
       """
         UPDATE notifications
         SET is_read = TRUE, updated_at = NOW()
-        WHERE id = %s AND user_id = %s
-        RETURNING id, user_id, message, is_read, created_at, updated_at
+        WHERE notification_id = %s AND user_id = %s
+        RETURNING notification_id, user_id, message, is_read, created_at, updated_at
       """,
       (notification_id, user_id)
     )
@@ -205,7 +210,7 @@ def read_notification(notification_id: UUID, user_id: UUID) -> NotificationRespo
     conn.commit()
 
     return NotificationResponse(
-      id=row[0],
+      notification_id=row[0],
       user_id=row[1],
       message=row[2],
       is_read=row[3],
@@ -213,14 +218,15 @@ def read_notification(notification_id: UUID, user_id: UUID) -> NotificationRespo
       updated_at=row[5]
     )
 
-  except OperationalError:
+  except OperationalError as e:
     conn.rollback()
+    print(repr(e))
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
       detail="Database unavailable"
     )
   
-  except DatabaseError:
+  except Error as e:
     conn.rollback()
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -237,7 +243,7 @@ def delete_notification(notification_id: UUID, user_id: UUID) -> dict:
     cursor.execute(
       """
         DELETE FROM notifications
-        WHERE id = %s AND user_id = %s
+        WHERE notification_id = %s AND user_id = %s
       """,
       (notification_id, user_id)
     )
@@ -255,14 +261,15 @@ def delete_notification(notification_id: UUID, user_id: UUID) -> dict:
       "message": "Notification deleted"
     }
 
-  except OperationalError:
+  except OperationalError as e:
     conn.rollback()
+    print(repr(e))
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
       detail="Database unavailable"
     )
   
-  except DatabaseError:
+  except Error as e:
     conn.rollback()
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -377,14 +384,15 @@ def create_notification(event: dict):
 
     conn.commit()
 
-  except OperationalError:
+  except OperationalError as e:
     conn.rollback()
+    print(repr(e))
     raise HTTPException(
       status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
       detail="Database unavailable"
     )
 
-  except DatabaseError:
+  except Error as e:
     conn.rollback()
     raise HTTPException(
       status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

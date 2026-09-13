@@ -1,5 +1,5 @@
 from ..models.transactions import TransactionResponse
-from psycopg.errors import OperationalError, DatabaseError
+from psycopg.errors import OperationalError, Error
 from ..kafka.producer import publish_refund_event, publish_transaction_successful, publish_transaction_failed, publish_transaction_pending, publish_refund_successful
 from ..core.config import conn
 from fastapi import HTTPException, status
@@ -40,7 +40,7 @@ def create_pending_transaction(sender_id: UUID, receiver_id: UUID, amount: Decim
     print("OPERATIONAL ERROR:", repr(e))
     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database service unavailable")
 
-  except DatabaseError as e:
+  except Error as e:
     conn.rollback()
     print("DATABASE ERROR:", repr(e))
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
@@ -68,7 +68,7 @@ def update_transaction_status(transaction_id: UUID, transaction_status: str) -> 
     print("OPERATIONAL ERROR:", repr(e))
     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database service unavailable")
 
-  except DatabaseError as e:
+  except Error as e:
     conn.rollback()
     print("DATABASE ERROR:", repr(e))
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
@@ -111,7 +111,15 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
     print("HTTP ERROR:", repr(e))
     update_transaction_status(transaction_id, "failed")
     publish_transaction_failed(transaction_id, sender_id, receiver_id, amount)
-    raise HTTPException(status_code = e.response.status_code, detail = e.response.json().get("detail", "Debit failed"))
+    try:
+      detail = e.response.json().get("detail", "Debit failed")
+    except ValueError:
+      detail = "Debit failed"
+
+    raise HTTPException(
+      status_code=e.response.status_code,
+      detail=detail
+    )
 
   except httpx.RequestError as e:
     update_transaction_status(transaction_id, "failed")
@@ -141,8 +149,7 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
     try:
       cursor.execute(
         """
-          SELECT id, transaction_id, sender_id, receiver_id,
-                amount, currency, status, created_at, updated_at
+          SELECT transaction_id, sender_id, receiver_id, amount, status, created_at, updated_at
           FROM transactions
           WHERE transaction_id = %s
         """,
@@ -152,15 +159,13 @@ async def create_transaction(sender_id: UUID, receiver_id: UUID, amount: Decimal
       row = cursor.fetchone()
 
       return TransactionResponse(
-        id=row[0],
-        transaction_id=row[1],
-        sender_id=row[2],
-        receiver_id=row[3],
-        amount=row[4],
-        currency=row[5],
-        status=row[6],
-        created_at=row[7],
-        updated_at=row[8]
+        transaction_id=row[0],
+        sender_id=row[1],
+        receiver_id=row[2],
+        amount=row[3],
+        status=row[4],
+        created_at=row[5],
+        updated_at=row[6]
       )
 
     finally:
@@ -234,10 +239,60 @@ def get_transactions(user_id: UUID) -> list[TransactionResponse]:
     print("OPERATIONAL ERROR:", repr(e))
     raise HTTPException(status_code=503, detail="Database unavailable")
 
-  except DatabaseError as e:
+  except Error as e:
     conn.rollback()
     print("DATABASE ERROR:", repr(e))
     raise HTTPException(status_code=500, detail="Database error")
+
+  finally:
+    cursor.close()
+
+def get_transaction(transaction_id: UUID, user_id: UUID) -> TransactionResponse:
+  cursor = conn.cursor()
+
+  try:
+    cursor.execute(
+      """
+        SELECT transaction_id, sender_id, receiver_id, amount, status, created_at, updated_at
+        FROM transactions
+        WHERE transaction_id = %s AND (sender_id = %s OR receiver_id = %s)
+      """,
+      (transaction_id, user_id, user_id)
+    )
+
+    row = cursor.fetchone()
+
+    if row is None:
+      raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Transaction not found"
+      )
+
+    return TransactionResponse(
+      transaction_id=row[0],
+      sender_id=row[1],
+      receiver_id=row[2],
+      amount=row[3],
+      status=row[4],
+      created_at=row[5],
+      updated_at=row[6]
+    )
+
+  except OperationalError as e:
+    conn.rollback()
+    print("OPERATIONAL ERROR:", repr(e))
+    raise HTTPException(
+      status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+      detail="Database service unavailable"
+    )
+
+  except Error as e:
+    conn.rollback()
+    print("DATABASE ERROR:", repr(e))
+    raise HTTPException(
+      status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+      detail="Database error"
+    )
 
   finally:
     cursor.close()

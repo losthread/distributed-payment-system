@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from psycopg.errors import OperationalError, DatabaseError 
+from psycopg.errors import OperationalError, Error
 from ..core.config import conn
 from ..models.wallet import WalletResponse, WalletBalanceResponse
 from uuid import UUID
@@ -23,7 +23,7 @@ def create_wallet(user_id: UUID) -> bool:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable")
 
-  except DatabaseError:
+  except Error:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
@@ -60,7 +60,7 @@ def get_my_wallet(user_id: UUID) -> WalletResponse | None:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable")
 
-  except DatabaseError:
+  except Error:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
@@ -93,7 +93,7 @@ def get_my_wallet_balance(user_id: UUID) -> WalletBalanceResponse | None:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database unavailable")
 
-  except DatabaseError:
+  except Error:
     conn.rollback()
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Database error")
 
