@@ -5,15 +5,15 @@ A microservices-based payment system with auth, wallets, and transactions, built
 ## Architecture
 
 ```text
-                                   ┌──────────────┐
-                                   │    Clients   │
-                                   └───────┬──────┘
-                                           │
-                                           ▼
-                                 ┌───────────────────┐
-                                 │     API Gateway   │
-                                 │  +(Rate Limiting) │
-                                 └────────┬──────────┘
+                                  ┌──────────────┐
+                                  │    Clients   │
+                                  └───────┬──────┘
+                                          │
+                                          ▼
+                            ┌─────────────────────────┐
+                            │        API Gateway      │
+                            │  + Redis(Rate Limiting) │
+                            └─────────────┬───────────┘
                                           │
               ┌────────────────┬──────────┼─────┬───────────────────┐
               ▼                ▼                ▼                   ▼
