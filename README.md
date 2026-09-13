@@ -100,11 +100,11 @@ Transaction statuses: `pending` → `completed` | `failed` | `refund_failed`
 ```bash
 git clone https://github.com/losthread/distributed-payment-system.git
 cd distributed-payment-system
+```
 
 ## Running With Docker
 
 ```bash
-# Orchestrate services
 # build and start
 docker compose up -d --build
 # start without rebuilding
@@ -136,6 +136,10 @@ uvicorn app.core.main:app --reload --host 0.0.0.0 --port <PORT>
 ```text
 .
 ├ docker-compose.yaml
+├ .env.example
+├ .gitignore
+├ LICENSE
+├ README.md
 ├ docs/
 │   ├── api-service/
 │   ├── auth-service/
@@ -153,9 +157,10 @@ Each service follows the same layout: `app/{core,crud,models,routes,tests}/`.
 
 ## Tech Stack
 
-- **Framework:** FastAPI
+- **Framework:** Python/FastAPI
 - **DB:** PostgreSQL (psycopg3)
 - **Auth:** JWT (PyJWT), Argon2 password hashing, Google OAuth
 - **Messaging:** Kafka (confluent-kafka)
 - **Rate Limiting:** Redis (Token Bucket Algorithm)
 - **Validation:** Pydantic
+- **Containerization:** Docker
